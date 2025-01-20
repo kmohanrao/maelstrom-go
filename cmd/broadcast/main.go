@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
+	"time"
 
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
 )
@@ -20,10 +20,11 @@ type TopologyMessage struct {
 
 type NeoNode struct {
 	*maelstrom.Node
-	messages map[float64]struct{}
-	data     []float64
-	topology Topology
-	mu       sync.RWMutex
+	messages           map[float64]struct{}
+	data               []float64
+	topology           Topology
+	mu                 sync.RWMutex
+	lastGossippedIndex int
 }
 
 func NewNeoNode() NeoNode {
@@ -41,14 +42,36 @@ func main() {
 
 	m.Handle("broadcast_ok", m.ignoreMessage)
 
+	m.Handle("gossip", m.handleGossip)
+
+	m.Handle("gossip_ok", m.ignoreMessage)
+
 	m.Handle("read", m.handleRead)
 
 	m.Handle("topology", m.handleTopology)
 
+	fmt.Fprintln(os.Stderr, "Call Run")
 	if err := m.Run(); err != nil {
 		log.Fatal(err)
 	}
 
+}
+
+func (n *NeoNode) Run() error {
+	interval := 100 * time.Millisecond
+	ticker := time.NewTicker(time.Duration(interval))
+	defer ticker.Stop()
+
+	go func() {
+		for range ticker.C {
+			n.gossip()
+		}
+	}()
+
+	if err := n.Node.Run(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (n *NeoNode) dataExists(k float64) bool {
@@ -64,7 +87,6 @@ func (n *NeoNode) handleBroadcast(msg maelstrom.Message) error {
 		return err
 	}
 
-	src := msg.Src
 	value := body["message"].(float64)
 	// _, ok := n.messages[value]
 
@@ -73,14 +95,6 @@ func (n *NeoNode) handleBroadcast(msg maelstrom.Message) error {
 		n.messages[value] = struct{}{}
 		n.mu.Unlock()
 		n.data = append(n.data, value)
-		for _, neighbour := range n.topology[n.ID()] {
-			if strings.Compare(neighbour, src) == 0 {
-				continue
-			}
-
-			fmt.Fprintln(os.Stderr, neighbour)
-			n.Send(neighbour, body)
-		}
 	}
 	body["type"] = "broadcast_ok"
 
@@ -117,5 +131,56 @@ func (n *NeoNode) handleTopology(msg maelstrom.Message) error {
 }
 
 func (n *NeoNode) ignoreMessage(msg maelstrom.Message) error {
+	return nil
+}
+
+func (n *NeoNode) handleGossip(msg maelstrom.Message) error {
+	var body GossipMessageBody
+	if err := json.Unmarshal(msg.Body, &body); err != nil {
+		return err
+	}
+
+	data := body.Data
+	// _, ok := n.messages[value]
+
+	for _, value := range data {
+		if !n.dataExists(value) {
+			n.mu.Lock()
+			n.messages[value] = struct{}{}
+			n.mu.Unlock()
+			n.data = append(n.data, value)
+		}
+	}
+
+	body.Type = "gossip_ok"
+
+	return n.Reply(msg, body)
+}
+
+type GossipMessageBody struct {
+	maelstrom.MessageBody
+	Data []float64 `json:"data,omitempty"`
+}
+
+func (n *NeoNode) gossip() error {
+	if n.lastGossippedIndex == len(n.data) {
+		return nil
+	}
+	newLength := len(n.data)
+	msgBody := GossipMessageBody{
+		MessageBody: maelstrom.MessageBody{
+			Type:  "gossip",
+			MsgID: len(n.data),
+		},
+		Data: n.data[n.lastGossippedIndex:newLength],
+	}
+
+	for _, neighbour := range n.topology[n.ID()] {
+		fmt.Fprintln(os.Stderr, neighbour)
+
+		n.Send(neighbour, msgBody)
+	}
+
+	n.lastGossippedIndex = newLength
 	return nil
 }
