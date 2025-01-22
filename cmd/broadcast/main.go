@@ -25,6 +25,7 @@ type NeoNode struct {
 	topology           Topology
 	mu                 sync.RWMutex
 	lastGossippedIndex int
+	nextIndex          int
 }
 
 func NewNeoNode() NeoNode {
@@ -158,21 +159,36 @@ func (n *NeoNode) gossip() error {
 	if n.lastGossippedIndex == len(n.data) {
 		return nil
 	}
-	newLength := len(n.data)
+	n.nextIndex = len(n.data)
 	msgBody := GossipMessageBody{
 		MessageBody: maelstrom.MessageBody{
 			Type:  "gossip",
-			MsgID: len(n.data),
+			MsgID: n.lastGossippedIndex,
 		},
-		Data: n.data[0:newLength],
+		Data: n.data[n.lastGossippedIndex:n.nextIndex],
 	}
 
+	log.Printf("total data: %d, gossipped data: %d\n", n.nextIndex, len(msgBody.Data))
+	callbackhandler := n.gossipCallbackHandler(len(n.topology[n.ID()]), 0)
 	for _, neighbour := range n.topology[n.ID()] {
 		fmt.Fprintln(os.Stderr, neighbour)
 
-		n.Send(neighbour, msgBody)
+		n.RPC(neighbour, msgBody, callbackhandler)
 	}
 
-	n.lastGossippedIndex = newLength
+	// n.lastGossippedIndex = newLength
 	return nil
+}
+
+func (n *NeoNode) gossipCallbackHandler(tc, margin int) maelstrom.HandlerFunc {
+	totalCount := tc
+	return func(msg maelstrom.Message) error {
+		totalCount--
+		log.Printf("%s, %d\n", msg.Type(), totalCount)
+		if totalCount <= margin {
+			n.lastGossippedIndex = n.nextIndex
+			log.Printf("new gossip index : %d\n", n.lastGossippedIndex)
+		}
+		return nil
+	}
 }
