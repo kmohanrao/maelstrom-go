@@ -40,17 +40,12 @@ func main() {
 
 	m.Handle("broadcast", m.handleBroadcast)
 
-	m.Handle("broadcast_ok", m.ignoreMessage)
-
 	m.Handle("gossip", m.handleGossip)
-
-	m.Handle("gossip_ok", m.ignoreMessage)
 
 	m.Handle("read", m.handleRead)
 
 	m.Handle("topology", m.handleTopology)
 
-	fmt.Fprintln(os.Stderr, "Call Run")
 	if err := m.Run(); err != nil {
 		log.Fatal(err)
 	}
@@ -58,7 +53,7 @@ func main() {
 }
 
 func (n *NeoNode) Run() error {
-	interval := 100 * time.Millisecond
+	interval := 200 * time.Millisecond
 	ticker := time.NewTicker(time.Duration(interval))
 	defer ticker.Stop()
 
@@ -130,10 +125,6 @@ func (n *NeoNode) handleTopology(msg maelstrom.Message) error {
 	return n.Reply(msg, body)
 }
 
-func (n *NeoNode) ignoreMessage(msg maelstrom.Message) error {
-	return nil
-}
-
 func (n *NeoNode) handleGossip(msg maelstrom.Message) error {
 	var body GossipMessageBody
 	if err := json.Unmarshal(msg.Body, &body); err != nil {
@@ -153,6 +144,7 @@ func (n *NeoNode) handleGossip(msg maelstrom.Message) error {
 	}
 
 	body.Type = "gossip_ok"
+	body.Data = nil
 
 	return n.Reply(msg, body)
 }
@@ -172,7 +164,7 @@ func (n *NeoNode) gossip() error {
 			Type:  "gossip",
 			MsgID: len(n.data),
 		},
-		Data: n.data[n.lastGossippedIndex:newLength],
+		Data: n.data[0:newLength],
 	}
 
 	for _, neighbour := range n.topology[n.ID()] {
