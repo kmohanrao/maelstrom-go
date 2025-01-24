@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	GossipInterval = 50
+	GossipInterval = 25
 	ChannelLength  = 100
 )
 
@@ -96,12 +96,6 @@ func (n *NeoNode) handleBroadcast(msg maelstrom.Message) error {
 	// _, ok := n.messages[value]
 
 	n.stream <- value
-	// if !n.dataExists(value) {
-	// 	n.mu.Lock()
-	// 	n.messages[value] = struct{}{}
-	// 	n.mu.Unlock()
-	// 	n.data = append(n.data, value)
-	// }
 	body["type"] = "broadcast_ok"
 
 	delete(body, "message")
@@ -147,12 +141,6 @@ func (n *NeoNode) handleGossip(msg maelstrom.Message) error {
 
 	for _, value := range data {
 		n.stream <- value
-		// if !n.dataExists(value) {
-		// 	n.mu.Lock()
-		// 	n.messages[value] = struct{}{}
-		// 	n.mu.Unlock()
-		// 	n.data = append(n.data, value)
-		// }
 	}
 
 	body.Type = "gossip_ok"
