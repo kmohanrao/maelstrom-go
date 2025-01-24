@@ -11,7 +11,10 @@ import (
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
 )
 
-const GossipInterval = 100
+const (
+	GossipInterval = 50
+	ChannelLength  = 100
+)
 
 type Topology map[string][]string
 type TopologyMessage struct {
@@ -28,6 +31,7 @@ type NeoNode struct {
 	mu                 sync.RWMutex
 	lastGossippedIndex int
 	nextIndex          int
+	stream             chan float64
 }
 
 func NewNeoNode() NeoNode {
@@ -35,6 +39,7 @@ func NewNeoNode() NeoNode {
 		Node:     maelstrom.NewNode(),
 		messages: make(map[float64]struct{}),
 		data:     []float64{},
+		stream:   make(chan float64, ChannelLength),
 	}
 }
 
@@ -66,6 +71,8 @@ func (n *NeoNode) Run() error {
 		}
 	}()
 
+	go n.updateStore()
+
 	if err := n.Node.Run(); err != nil {
 		return err
 	}
@@ -88,12 +95,13 @@ func (n *NeoNode) handleBroadcast(msg maelstrom.Message) error {
 	value := body["message"].(float64)
 	// _, ok := n.messages[value]
 
-	if !n.dataExists(value) {
-		n.mu.Lock()
-		n.messages[value] = struct{}{}
-		n.mu.Unlock()
-		n.data = append(n.data, value)
-	}
+	n.stream <- value
+	// if !n.dataExists(value) {
+	// 	n.mu.Lock()
+	// 	n.messages[value] = struct{}{}
+	// 	n.mu.Unlock()
+	// 	n.data = append(n.data, value)
+	// }
 	body["type"] = "broadcast_ok"
 
 	delete(body, "message")
@@ -138,12 +146,13 @@ func (n *NeoNode) handleGossip(msg maelstrom.Message) error {
 	// _, ok := n.messages[value]
 
 	for _, value := range data {
-		if !n.dataExists(value) {
-			n.mu.Lock()
-			n.messages[value] = struct{}{}
-			n.mu.Unlock()
-			n.data = append(n.data, value)
-		}
+		n.stream <- value
+		// if !n.dataExists(value) {
+		// 	n.mu.Lock()
+		// 	n.messages[value] = struct{}{}
+		// 	n.mu.Unlock()
+		// 	n.data = append(n.data, value)
+		// }
 	}
 
 	body.Type = "gossip_ok"
@@ -192,5 +201,16 @@ func (n *NeoNode) gossipCallbackHandler(tc, margin int) maelstrom.HandlerFunc {
 			log.Printf("new gossip index : %d\n", n.lastGossippedIndex)
 		}
 		return nil
+	}
+}
+
+func (n *NeoNode) updateStore() {
+	for v := range n.stream {
+		if !n.dataExists(v) {
+			n.mu.Lock()
+			n.messages[v] = struct{}{}
+			n.mu.Unlock()
+			n.data = append(n.data, v)
+		}
 	}
 }
