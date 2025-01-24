@@ -6,8 +6,12 @@ SOURCE_DIR := cmd
 # Maelstrom configurations
 MAELSTROM := ./maelstrom/maelstrom
 NODE_COUNT := 5
+HIGH_NODE_COUNT := 25
+LOW_TIME_LIMIT := 20
 TIME_LIMIT := 30
 RATE := 10
+HIGHER_RATE := 100
+LATENCY := 100
 
 # Challenge names
 CHALLENGES := echo \
@@ -88,7 +92,7 @@ test-echo: $(BINARY_DIR)/echo
 
 # Broadcast tests
 .PHONY: test-broadcast
-test-broadcast: $(BINARY_DIR)/broadcast test-broadcast-single test-broadcast-multi test-broadcast-fault
+test-broadcast: $(BINARY_DIR)/broadcast test-broadcast-single test-broadcast-multi test-broadcast-fault test-broadcast-stable-latency test-broadcast-efficiency
 
 test-broadcast-single: $(BINARY_DIR)/broadcast
 	$(MAELSTROM) test \
@@ -114,6 +118,24 @@ test-broadcast-fault: $(BINARY_DIR)/broadcast
 		--time-limit $(TIME_LIMIT) \
 		--rate $(RATE) \
 		--nemesis partition
+
+test-broadcast-stable-latency: $(BINARY_DIR)/broadcast
+	$(MAELSTROM) test \
+		-w broadcast \
+		--bin $(BINARY_DIR)/broadcast \
+		--node-count $(HIGH_NODE_COUNT) \
+		--time-limit $(LOW_TIME_LIMIT) \
+		--rate $(HIGHER_RATE) \
+		--latency $(LATENCY)
+
+test-broadcast-efficiency: $(BINARY_DIR)/broadcast
+	$(MAELSTROM) test \
+		-w broadcast \
+		--bin $(BINARY_DIR)/broadcast \
+		--node-count $(HIGH_NODE_COUNT) \
+		--time-limit $(LOW_TIME_LIMIT) \
+		--rate $(HIGHER_RATE) \
+		--latency $(LATENCY)
 
 # Unique IDs test
 .PHONY: test-unique-ids
@@ -189,12 +211,14 @@ help:
 	@echo "Maelstrom test targets:"
 	@echo "  test-all     - Run all Maelstrom tests"
 	@echo "  test-echo    - Run echo test"
-	@echo "  test-broadcast         - Run all broadcast tests"
-	@echo "  test-broadcast-single  - Run single-node broadcast test"
-	@echo "  test-broadcast-multi   - Run multi-node broadcast test"
-	@echo "  test-broadcast-fault   - Run broadcast test with network partitions"
-	@echo "  test-unique-ids        - Run unique IDs test"
-	@echo "  test-g-counter        - Run grow-only counter test"
-	@echo "  test-pn-counter       - Run positive-negative counter test"
-	@echo "  test-txn-list-append  - Run transactional list append test"
-	@echo "  test-kafka           - Run Kafka-style log test"
+	@echo "  test-broadcast                  - Run all broadcast tests"
+	@echo "  test-broadcast-single           - Run single-node broadcast test"
+	@echo "  test-broadcast-multi            - Run multi-node broadcast test"
+	@echo "  test-broadcast-fault            - Run broadcast test with network partitions"
+	@echo "  test-broadcast-stable-latency   - Run broadcast test with latency"
+	@echo "  test-broadcast-efficiency       - Run broadcast test with latency for efficiency"
+	@echo "  test-unique-ids                 - Run unique IDs test"
+	@echo "  test-g-counter                  - Run grow-only counter test"
+	@echo "  test-pn-counter                 - Run positive-negative counter test"
+	@echo "  test-txn-list-append            - Run transactional list append test"
+	@echo "  test-kafka                      - Run Kafka-style log test"

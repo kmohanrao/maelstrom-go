@@ -11,6 +11,8 @@ import (
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
 )
 
+const GossipInterval = 100
+
 type Topology map[string][]string
 type TopologyMessage struct {
 	Type  string   `json:"type"`
@@ -54,7 +56,7 @@ func main() {
 }
 
 func (n *NeoNode) Run() error {
-	interval := 200 * time.Millisecond
+	interval := GossipInterval * time.Millisecond
 	ticker := time.NewTicker(time.Duration(interval))
 	defer ticker.Stop()
 
