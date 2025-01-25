@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -61,8 +62,8 @@ func main() {
 }
 
 func (n *NeoNode) Run() error {
-	interval := GossipInterval * time.Millisecond
-	ticker := time.NewTicker(time.Duration(interval))
+	interval := time.Duration(GossipInterval+rand.Intn(25)) * time.Millisecond
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	go func() {
@@ -123,7 +124,46 @@ func (n *NeoNode) handleTopology(msg maelstrom.Message) error {
 	// body["type"] = "topology_ok"
 	body.Type = "topology_ok"
 	// delete(body, "topology")
-	n.topology = body.Topo
+	// n.topology = body.Topo
+
+	jsonData := `{
+		"n0": ["n1", "n2", "n3", "n4", "n5", "n6"],
+		"n1": ["n0", "n7", "n8", "n9", "n10", "n11", "n12"],
+		"n2": ["n0", "n13", "n14", "n15", "n16", "n17", "n18"],
+		"n3": ["n0", "n19", "n20", "n21", "n22", "n23", "n24"],
+		"n4": ["n0"],
+		"n5": ["n0"],
+		"n6": ["n0"],
+		"n7": ["n1"],
+		"n8": ["n1"],
+		"n9": ["n1"],
+		"n10": ["n1"],
+		"n11": ["n1"],
+		"n12": ["n1"],
+		"n13": ["n2"],
+		"n14": ["n2"],
+		"n15": ["n2"],
+		"n16": ["n2"],
+		"n17": ["n2"],
+		"n18": ["n2"],
+		"n19": ["n3"],
+		"n20": ["n3"],
+		"n21": ["n3"],
+		"n22": ["n3"],
+		"n23": ["n3"],
+		"n24": ["n3"]
+	}`
+
+	// Declare a variable of type Topology
+	var topology Topology
+
+	// Unmarshal JSON into the Topology variable
+	err := json.Unmarshal([]byte(jsonData), &topology)
+	if err != nil {
+		fmt.Println("Error unmarshalling JSON:", err)
+		return err
+	}
+	n.topology = topology
 	body.Topo = nil
 
 	fmt.Fprintln(os.Stderr, n.topology)

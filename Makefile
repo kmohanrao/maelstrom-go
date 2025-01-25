@@ -12,7 +12,8 @@ TIME_LIMIT := 30
 RATE := 10
 HIGHER_RATE := 100
 LATENCY := 100
-TOPOLOGY := tree4
+TOPOLOGY := tree3
+TOPOLOGY_JSON := topology.json
 
 # Challenge names
 CHALLENGES := echo \
@@ -128,8 +129,7 @@ test-broadcast-stable-latency: $(BINARY_DIR)/broadcast
 		--node-count $(HIGH_NODE_COUNT) \
 		--time-limit $(LOW_TIME_LIMIT) \
 		--rate $(HIGHER_RATE) \
-		--latency $(LATENCY) \
-		--topology $(TOPOLOGY)
+		--latency $(LATENCY) 
 
 test-broadcast-efficiency: $(BINARY_DIR)/broadcast
 	$(MAELSTROM) test \
