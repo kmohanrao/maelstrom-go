@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	GossipInterval = 25
+	GossipInterval = 40
 	ChannelLength  = 100
 )
 
