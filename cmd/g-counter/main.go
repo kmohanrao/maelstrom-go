@@ -21,12 +21,6 @@ type TopologyMessage struct {
 }
 type NeoNode struct {
 	*maelstrom.Node
-	// messages           map[float64]struct{}
-	data float64
-	// topology           Topology
-	// mu                 sync.RWMutex
-	// lastGossippedIndex int
-	// nextIndex          int
 	stream chan float64
 	kv     *maelstrom.KV
 }
@@ -57,10 +51,6 @@ func main() {
 }
 
 func (n *NeoNode) Run() error {
-	// interval := time.Duration(GossipInterval+rand.Intn(25)) * time.Millisecond
-	// ticker := time.NewTicker(interval)
-	// defer ticker.Stop()
-
 	log.Print("start the node")
 	go n.updateStore()
 
@@ -96,8 +86,6 @@ func (n *NeoNode) handleAdd(msg maelstrom.Message) error {
 	}
 
 	value := body["delta"].(float64)
-	// n.data += value
-
 	n.stream <- value
 	body["type"] = "add_ok"
 
@@ -121,6 +109,5 @@ func (n *NeoNode) updateStore() {
 				current = 0
 			}
 		}
-
 	}
 }
