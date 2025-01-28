@@ -5,6 +5,7 @@ SOURCE_DIR := cmd
 
 # Maelstrom configurations
 MAELSTROM := ./maelstrom/maelstrom
+LOW_NODE_COUNT := 3
 NODE_COUNT := 5
 HIGH_NODE_COUNT := 25
 LOW_TIME_LIMIT := 20
@@ -156,8 +157,8 @@ test-g-counter: $(BINARY_DIR)/g-counter
 	$(MAELSTROM) test \
 		-w g-counter \
 		--bin $(BINARY_DIR)/g-counter \
-		--node-count $(NODE_COUNT) \
-		--rate $(RATE) \
+		--node-count $(LOW_NODE_COUNT) \
+		--rate $(HIGHER_RATE) \
 		--time-limit $(TIME_LIMIT) \
 		--nemesis partition
 
