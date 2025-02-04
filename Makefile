@@ -12,6 +12,7 @@ LOW_TIME_LIMIT := 20
 TIME_LIMIT := 30
 RATE := 10
 HIGHER_RATE := 100
+VERY_HIGH_RATE := 1000
 LATENCY := 100
 TOPOLOGY := tree3
 TOPOLOGY_JSON := topology.json
@@ -185,7 +186,7 @@ test-txn-list-append: $(BINARY_DIR)/txn-list-append
 		--nemesis partition
 
 # Kafka-style log test
-.PHONY: test-kafka
+.PHONY: test-kafka test-kafka-single
 test-kafka: $(BINARY_DIR)/kafka
 	$(MAELSTROM) test \
 		-w kafka \
@@ -194,6 +195,15 @@ test-kafka: $(BINARY_DIR)/kafka
 		--concurrency 2n \
 		--time-limit $(TIME_LIMIT) \
 		--rate $(RATE)
+
+test-kafka-single: $(BINARY_DIR)/kafka
+	$(MAELSTROM) test \
+		-w kafka \
+		--bin $(BINARY_DIR)/kafka \
+		--node-count 1 \
+		--concurrency 2n \
+		--time-limit $(TIME_LIMIT) \
+		--rate $(VERY_HIGH_RATE)
 
 # Help target
 .PHONY: help
